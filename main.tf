@@ -1,74 +1,41 @@
-# main.tf
-
 provider "aws" {
-  region = "us-west-2" # Adjust the region as needed
+  region = "us-east-1"
 }
 
-resource "aws_vpc" "dev_vpc" {
-  cidr_block = "10.0.0.0/16"
+variable "availability_zone" {
+  description = "The AWS availability zone to deploy the instance and volume"
+  type        = string
+  default     = "us-east-1a"
 }
 
-resource "aws_subnet" "dev_subnet" {
-  vpc_id     = aws_vpc.dev_vpc.id
-  cidr_block = "10.0.1.0/24"
-}
+resource "aws_instance" "scylla_db_instance" {
+  ami           = "ami-0a0e5d9c7acc336f1"
+  instance_type = "t2.medium"
+  availability_zone = var.availability_zone
 
-resource "aws_security_group" "dev_sg" {
-  vpc_id = aws_vpc.dev_vpc.id
-
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+  root_block_device {
+    volume_size = 15
   }
-
-  ingress {
-    from_port   = 9042
-    to_port     = 9042
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-resource "aws_instance" "scylla" {
-  ami           = "ami-0c55b159cbfafe1f0" # Ubuntu Server 20.04 LTS (Change as needed)
-  instance_type = "t2.micro"
-  subnet_id     = aws_subnet.dev_subnet.id
-  security_groups = [aws_security_group.dev_sg.name]
 
   tags = {
-    Name = "ScyllaDB-Instance"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "sudo apt-get update -y",
-      "sudo apt-get install -y apt-transport-https curl",
-      "curl -s https://s3.amazonaws.com/downloads.scylladb.com/deb/unstable/ubuntu/scylladb-4.3.0/Release.key | sudo apt-key add -",
-      "echo 'deb https://s3.amazonaws.com/downloads.scylladb.com/deb/unstable/ubuntu/scylladb-4.3.0 focal main' | sudo tee /etc/apt/sources.list.d/scylla.list",
-      "sudo apt-get update -y",
-      "sudo apt-get install -y scylla",
-      "sudo scylla_setup --no-ec2-check",
-      "sudo systemctl start scylla-server"
-    ]
-
-    connection {
-      type        = "ssh"
-      user        = "ubuntu"
-      private_key = file("~/.ssh/id_rsa")
-      host        = self.public_ip
-    }
+    Name        = "Scylla DB"
+    Environment = "Dev"
+    Project     = "TerraformDemo"
   }
 }
 
-output "ec2_public_ip" {
-  value = aws_instance.scylla.public_ip
+resource "aws_ebs_volume" "scylla_db_volume" {
+  availability_zone = var.availability_zone
+  size              = 15
+  tags = {
+    Name        = "Scylla DB Volume"
+    Environment = "Dev"
+    Project     = "OT-Microservice"
+  }
+}
+
+resource "aws_volume_attachment" "scylla_db_attachment" {
+  device_name = "/dev/sdh"
+  volume_id   = aws_ebs_volume.scylla_db_volume.id
+  instance_id = aws_instance.scylla_db_instance.id
 }
