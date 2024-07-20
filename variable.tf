@@ -1,4 +1,4 @@
 # variable.tf
 
-*Syntax error*
+- Syntax error
 
