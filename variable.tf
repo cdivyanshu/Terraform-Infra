@@ -1,3 +1,4 @@
-```
-Syntax error
-```
+# variable.tf
+
+*Syntax error*
+
