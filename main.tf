@@ -39,3 +39,4 @@ resource "aws_volume_attachment" "scylla_db_attachment" {
   volume_id   = aws_ebs_volume.scylla_db_volume.id
   instance_id = aws_instance.scylla_db_instance.id
 }
+####
